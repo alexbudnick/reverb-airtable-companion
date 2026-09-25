@@ -20,6 +20,15 @@ async function main() {
     const rawState = extractReverbState(listing);
     const mapped = buildListingStateFields(rawState, qty);
 
+    // Reverb can return stale listing inventory after an order. An order that
+    // has been recorded must remain sold until a person reviews a restock.
+    if (record && Number(record.fields?.[CFG.airtable.qtyField] ?? 0) === 0 &&
+        (record.fields?.[CFG.airtable.processedOrdersField] || record.fields?.[CFG.airtable.statusField] === CFG.values.sold) &&
+        (qty > 0 || mapped.listed)) {
+      logger("warn", "Listing inventory conflicts with processed sale; preserving sold record", { sku, listingId, qty });
+      continue;
+    }
+
     const fields = {
       [CFG.airtable.reverbListingIdField]: listingId,
       [CFG.airtable.reverbStatusField]: rawState,
