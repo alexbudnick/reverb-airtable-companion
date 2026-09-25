@@ -12,6 +12,7 @@ export const CFG = {
   logLevel: process.env.LOG_LEVEL || "info",
   dryRun: String(process.env.DRY_RUN || "false").toLowerCase() === "true",
   triggerSecret: process.env.SYNC_TRIGGER_SECRET || "",
+  ordersFrom: process.env.REVERB_ORDERS_FROM || "",
   decrementStatuses: parseCsvSet(process.env.REVERB_DECREMENT_ORDER_STATUSES, "paid,shipped,completed,delivered"),
   ignoreStatuses: parseCsvSet(process.env.REVERB_IGNORE_ORDER_STATUSES, "pending,cancelled,canceled,refunded,failed,voided"),
   reverb: {
@@ -36,6 +37,7 @@ export const CFG = {
     listedField: process.env.AIRTABLE_LISTED_FIELD || "Listed",
     reverbListingIdField: process.env.AIRTABLE_REVERB_LISTING_ID_FIELD || "Reverb Listing ID",
     reverbOrderIdField: process.env.AIRTABLE_REVERB_ORDER_ID_FIELD || "Reverb Order ID",
+    processedOrdersField: process.env.AIRTABLE_PROCESSED_ORDERS_FIELD || "Reverb Processed Order IDs",
     reverbStatusField: process.env.AIRTABLE_REVERB_STATUS_FIELD || "Reverb Status",
     lastSyncSourceField: process.env.AIRTABLE_LAST_SYNC_SOURCE_FIELD || "Last Sync Source",
     lastSyncAtField: process.env.AIRTABLE_LAST_SYNC_AT_FIELD || "Last Sync At",
@@ -170,7 +172,8 @@ export async function airtableRequest(path = "", options = {}) {
 
 export async function findAirtableRecordBySku(sku) {
   const formula = `{${CFG.airtable.skuField}}="${String(sku).replace(/"/g, '\\"')}"`;
-  const payload = await airtableRequest(`?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`);
+  const payload = await airtableRequest(`?filterByFormula=${encodeURIComponent(formula)}&maxRecords=2`);
+  if (payload.records?.length > 1) throw new Error(`Multiple Airtable records match SKU ${sku}; inventory was not changed`);
   return payload.records?.[0] || null;
 }
 
