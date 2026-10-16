@@ -183,6 +183,20 @@ export async function findAirtableRecordByListingId(listingId) {
   return payload.records?.[0] || null;
 }
 
+export async function fetchTrackedWarehouseRecords() {
+  const formula = `AND({${CFG.airtable.channelField}}="${CFG.values.channelWarehouse}",{${CFG.airtable.reverbListingIdField}}!="",OR({${CFG.airtable.listedField}}=1,{${CFG.airtable.qtyField}}>0))`;
+  const records = [];
+  let offset;
+  do {
+    const params = new URLSearchParams({ filterByFormula: formula, pageSize: "100" });
+    if (offset) params.set("offset", offset);
+    const data = await airtableRequest(`?${params}`);
+    records.push(...(data.records || []));
+    offset = data.offset;
+  } while (offset);
+  return records;
+}
+
 export async function updateAirtableRecord(recordId, fields) {
   if (CFG.dryRun) {
     logger("info", "DRY_RUN enabled; would update Airtable record", { recordId, fields });
@@ -270,7 +284,11 @@ export function buildListingStateFields(rawState, qty) {
   if (state === "live" || state === "listed" || state === "active") {
     fields.status = CFG.values.listedWarehouse;
     fields.listed = true;
-  } else if (state === "draft" || state === "ended" || state === "inactive") {
+  } else if (state === "ended") {
+    // Ending a listing is not a sale; order sync owns sale attribution.
+    fields.status = CFG.values.notListedWarehouse;
+    fields.listed = false;
+  } else if (state === "draft" || state === "inactive") {
     fields.status = qty > 0 ? CFG.values.notListedWarehouse : CFG.values.sold;
     fields.listed = false;
   } else if (state) {

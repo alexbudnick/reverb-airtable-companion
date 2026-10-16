@@ -1,7 +1,15 @@
 import { logger, fetchAllReverbPages, findAirtableRecordBySku, findAirtableRecordByListingId, updateAirtableRecord, createAirtableRecord, extractReverbSku, extractReverbQuantity, extractReverbPrice, extractReverbState, nowIso, buildListingStateFields, CFG } from "./lib.js";
+import { fetchTrackedWarehouseRecords, reverbRequest } from "./lib.js";
+import { missingTrackedListings } from "./reconcile_listings.js";
 
 async function main() {
   const listings = await fetchAllReverbPages(CFG.reverb.listingsPath, "listings");
+  const missing = await missingTrackedListings(listings, await fetchTrackedWarehouseRecords(), {
+    idField: CFG.airtable.reverbListingIdField,
+    fetchListing: id => reverbRequest(`/listings/${encodeURIComponent(id)}`),
+    warn: (message, meta) => logger("warn", message, meta),
+  });
+  listings.push(...missing);
   let updated = 0;
   let created = 0;
 
@@ -27,6 +35,10 @@ async function main() {
         (qty > 0 || mapped.listed)) {
       logger("warn", "Listing inventory conflicts with processed sale; preserving sold record", { sku, listingId, qty });
       continue;
+    }
+    if (record && qty === 0 &&
+        (record.fields?.[CFG.airtable.processedOrdersField] || record.fields?.[CFG.airtable.statusField] === CFG.values.sold)) {
+      mapped.status = CFG.values.sold;
     }
 
     const fields = {
