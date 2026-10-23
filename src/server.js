@@ -2,7 +2,10 @@ import express from "express";
 import { CFG, logger } from "./lib.js";
 import { spawn } from "child_process";
 
+import { installQuantityGateway } from "./quantity-gateway.js";
+
 const app = express();
+installQuantityGateway(app, express.json);
 const PORT = Number(process.env.PORT || 3000);
 
 let activeJob = null;

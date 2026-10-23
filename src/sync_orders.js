@@ -13,6 +13,10 @@ export function orderKey(order, item, index) {
 }
 
 async function main() {
+  if (process.env.CENTRAL_QUANTITY_ENABLED === "1") {
+    console.log("Warehouse quantities and order reservations are handled by the central quantity worker");
+    return;
+  }
   if (!CFG.ordersFrom || !Number.isFinite(Date.parse(CFG.ordersFrom))) {
     throw new Error("REVERB_ORDERS_FROM must be a valid ISO date; refusing to replay historical orders");
   }

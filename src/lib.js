@@ -198,6 +198,10 @@ export async function fetchTrackedWarehouseRecords() {
 }
 
 export async function updateAirtableRecord(recordId, fields) {
+  if (process.env.CENTRAL_QUANTITY_ENABLED === "1") {
+    fields = {...fields};
+    for (const key of [CFG.airtable.qtyField, CFG.airtable.listedField, CFG.airtable.statusField, CFG.airtable.attentionField]) delete fields[key];
+  }
   if (CFG.dryRun) {
     logger("info", "DRY_RUN enabled; would update Airtable record", { recordId, fields });
     return { dryRun: true };
